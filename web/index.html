@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="vitalshield_ai">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>vitalshield_ai</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body {
+      background-color: #0A0E1A;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Disable default browser focus outline on interactive web elements */
+    *:focus {
+      outline: none !important;
+    }
+    
+    flt-glass-pane, canvas, flutter-view {
+      outline: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+      box-shadow: none !important;
+    }
+
+    #loading-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: opacity 0.4s ease-out;
+      opacity: 1;
+      z-index: 9999;
+    }
+
+    .logo-container {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 15px rgba(108, 99, 255, 0.15));
+      animation: pulse-glow 2.0s infinite ease-in-out;
+    }
+
+    .app-name {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: 1.0px;
+      color: #F0F0F5;
+    }
+
+    .tagline {
+      font-size: 16px;
+      font-weight: 400;
+      color: #9CA3AF;
+      margin-bottom: 48px;
+      letter-spacing: 0.5px;
+    }
+
+    .progress-container {
+      width: 160px;
+      height: 1.5px;
+      background-color: #1A2240;
+      border-radius: 1px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 50%;
+      background-color: rgba(108, 99, 255, 0.8);
+      animation: loading-bar 2.0s ease-in-out infinite;
+      border-radius: 1px;
+    }
+
+    @keyframes pulse-glow {
+      0% {
+        filter: drop-shadow(0 0 15px rgba(108, 99, 255, 0.15));
+        transform: scale(0.97);
+      }
+      50% {
+        filter: drop-shadow(0 0 25px rgba(108, 99, 255, 0.35));
+        transform: scale(1.03);
+      }
+      100% {
+        filter: drop-shadow(0 0 15px rgba(108, 99, 255, 0.15));
+        transform: scale(0.97);
+      }
+    }
+
+    @keyframes loading-bar {
+      0% {
+        left: -50%;
+        width: 30%;
+      }
+      50% {
+        width: 60%;
+      }
+      100% {
+        left: 100%;
+        width: 30%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-container" id="loading-indicator">
+    <div class="logo-container">
+      <img class="logo" src="logo.png?v=3" alt="VitalShield AI Logo">
+    </div>
+    <div class="app-name">VitalShield AI</div>
+    <div class="tagline">Your Intelligent Wellness Companion</div>
+    <div class="progress-container">
+      <div class="progress-bar"></div>
+    </div>
+  </div>
+
+  <script>
+    // Monkeypatch attachShadow to inject outline-disabling CSS into all shadow roots
+    (function() {
+      const originalAttachShadow = Element.prototype.attachShadow;
+      Element.prototype.attachShadow = function(init) {
+        const shadowRoot = originalAttachShadow.call(this, init);
+        try {
+          const style = document.createElement('style');
+          style.textContent = `
+            *:focus, *:hover, *:active {
+              outline: none !important;
+              box-shadow: none !important;
+              -webkit-tap-highlight-color: transparent !important;
+            }
+            * {
+              outline: none !important;
+              box-shadow: none !important;
+              -webkit-tap-highlight-color: transparent !important;
+            }
+            canvas, flt-canvas, flt-glass-pane, flutter-view {
+              outline: none !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+          `;
+          shadowRoot.appendChild(style);
+        } catch (e) {
+          console.error('Failed to inject style into shadow root', e);
+        }
+        return shadowRoot;
+      };
+    })();
+
+    // Expose a global function to remove the loading indicator programmatically
+    window.removeMaxLoader = function() {
+      const loader = document.getElementById('loading-indicator');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => {
+          loader.remove();
+        }, 400);
+      }
+    };
+
+    // Create a MutationObserver as a backup to watch for Flutter mounting its element
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          const name = node.nodeName ? node.nodeName.toUpperCase() : '';
+          if (name === 'FLT-GLASS-PANE' || name === 'FLUTTER-VIEW' || name.indexOf('FLUTTER') !== -1) {
+            window.removeMaxLoader();
+            observer.disconnect();
+            break;
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
