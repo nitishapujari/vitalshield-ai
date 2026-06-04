@@ -1,4 +1,4 @@
-# VitalShield AI: Intelligent Wellness Companion
+# VitalShield AI
 
 [![Flutter Version](https://img.shields.io/badge/Flutter-Stable-02569B?logo=flutter)](https://flutter.dev)
 [![FastAPI Version](https://img.shields.io/badge/FastAPI-0.100+-009688?logo=fastapi)](https://fastapi.tiangolo.com)
@@ -6,34 +6,48 @@
 [![Platform Support](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-blue)](#)
 [![Test Suite](https://img.shields.io/badge/Tests-85%20Passed-4CAF50)](https://github.com/)
 
-VitalShield AI is a state-of-the-art wellness intelligence and monitoring platform designed as a portfolio-quality B.Tech AI/Data Science demonstration project. The application captures daily health vitals, computes predictive wellness scores, applies clinical safety overrides, and provides conversational health coaching via an AI Wellness Assistant.
+VitalShield AI is a wellness monitoring, prediction, analytics, and AI-assistance platform. The application captures daily health vitals, computes predictive wellness scores using machine learning, applies clinical safety safeguards, and provides health coaching using an AI assistant.
 
 ---
 
-## 📌 Problem Statement
+## Highlights
 
-Traditional health monitoring systems suffer from three critical flaws:
-1. **Rigid Connectivity Reliance**: Many systems become non-functional offline, leaving users without access to predictions or AI advisory when network coverage is lost.
-2. **Clinical Safety Blindspots**: Standard machine learning models (like Random Forests) cannot extrapolate safety ceilings for extreme out-of-distribution values (e.g., critical blood pressure or blood sugar), potentially presenting high wellness scores during life-threatening crises.
-3. **Conflicting & Unactionable Guidance**: Apps often deliver generic, disconnected tips (e.g., recommending a user in a hypertensive crisis to "increase activity to burn calories" or displaying duplicate, wordy insights across different screens).
-
-**VitalShield AI solves these challenges** by implementing a resilient, offline-first hybrid architecture, incorporating deterministic safety override barriers, and utilizing a centralized `InsightBuilder` layer to enforce actionable, prioritized, and contradiction-free health guidance.
-
----
-
-## 🎨 Core Value Propositions & Features
-
-* **Offline-First Resilience**: An identical local prediction engine implemented in Dart runs when backend connectivity fails, namespacing offline check-ins and auto-syncing them with the backend when connection is restored.
-* **Dual-Model ML Pipeline**: A RandomForest Regressor calculates the overall wellness score, while a RandomForest Classifier identifies the primary wellness domain requiring attention.
-* **Clinical Safety Overrides & Suppression**: Enforces hard ceiling caps (Score $\le 40$) and triggers critical notifications during emergencies (SBP $\ge 180$, DBP $\ge 120$, Glucose $< 55$ or $> 300$). Lower-priority advice is suppressed to prevent medical contradictions.
-* **Centralized `InsightBuilder`**: Establishes a single source of truth (duplicated in Python and Dart) that enforces physiology-focused actionable wording templates and computes quantitative `scoreImprovementEstimate` impact metrics.
-* **AI Wellness Assistant**: An interactive wellness coach that parses the user's latest health snapshots to answer queries. Falls back to a deterministic rule-based dialogue tree offline.
-* **Advanced Step Consistency**: Employs an activity consistency metric utilizing the Coefficient of Variation ($CV = \sigma / \mu$), capping steps at $5,000$ to prevent penalizing active users for extra movement.
-* **Multi-Profile Management**: Supports namespaced profile switching for separate family members, ensuring complete database and local storage isolation.
+* **Flutter Web and Android Support**: Cross-platform client architecture supporting mobile and web deployment from a single codebase.
+* **FastAPI Backend**: Powered by a Python FastAPI backend for serving predictions, analytics, and assistant services.
+* **Offline-First Architecture**: Runs client-side Dart prediction logic when backend connectivity fails, ensuring continuous core functionality.
+* **AI Wellness Assistant**: Uses structured context construction to provide automated wellness coaching, falling back to a rule-based dialogue engine offline.
+* **Multi-Profile Support**: Supports on-device profile switching with isolated database namespaces and local storage partitions.
+* **Clinical Safety Overrides**: Employs deterministic physiological override thresholds to safeguard ML prediction models against out-of-distribution vitals.
+* **Prediction Synchronization Engine**: Buffers offline predictions locally and synchronizes them with the backend when connection is restored.
+* **85+ Automated Tests**: Validated by a test suite covering widget interaction, integration sync flows, and backend service logic.
 
 ---
 
-## 📐 System Architecture
+## Problem Statement
+
+Standard wellness monitoring applications face several critical technical challenges:
+1. **Offline Operation**: Many health-tracking platforms rely entirely on continuous internet connectivity, failing to provide predictions or coaching when network access is lost.
+2. **Safety-Aware Prediction Handling**: Standard machine learning models (such as Random Forests) cannot extrapolate safety ceilings for extreme, out-of-distribution vital signs, potentially outputting high wellness scores during critical physiological crises.
+3. **Actionable Recommendations**: Health insights are often generic or unprioritized, failing to give clear, context-specific guidance based on the user's metrics.
+4. **Insight Consistency**: Replicating complex logical scoring and coaching feedback across client (Dart) and backend (Python) layers often leads to logic divergence and conflicting user guidance.
+
+**VitalShield AI addresses these challenges** with a hybrid architecture combining an offline-first prediction engine, clinical safety overrides, and a centralized insight builder protocol that ensures consistent, safety-aware, and actionable health guidance across platforms.
+
+---
+
+## Key Features
+
+* **Offline-First Support**: Runs an identical local prediction engine in Dart when backend connectivity fails, caching offline check-ins and synchronizing them once connectivity is restored.
+* **Dual-Model Machine Learning Pipeline**: Utilizes a Random Forest Regressor to calculate the overall wellness score and a Random Forest Classifier to identify the primary wellness domain requiring attention.
+* **Clinical Safety Overrides**: Enforces hard ceiling caps (Wellness Score $\le 40$) and triggers critical alerts during emergency physiological conditions (e.g., SBP $\ge 180$, DBP $\ge 120$, Glucose $< 55$ or $> 300$ mg/dL).
+* **Centralized Insight Generation**: Establishes a single logical source of truth (implemented in both Python and Dart) that enforces physiology-focused actionable wording templates and computes quantitative `scoreImprovementEstimate` impact metrics.
+* **AI Wellness Assistant**: Provides interactive wellness coaching by evaluating the user's latest health snapshots. If offline, the client falls back to a rule-based deterministic response tree.
+* **Step Consistency Analysis**: Computes daily activity consistency using the Coefficient of Variation ($CV = \sigma / \mu$), capping inputs at 5,000 steps to ensure the metric evaluates regular movement habits without penalizing high-intensity workouts.
+* **Multi-Profile Management**: Supports profile switching with isolated database namespaces and local storage partitions for separate users.
+
+---
+
+## Architecture
 
 ```mermaid
 graph TD
@@ -79,7 +93,7 @@ graph TD
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 * **Frontend Framework**: Flutter (Dart)
   - *State Management*: Riverpod
@@ -98,7 +112,7 @@ graph TD
 
 ---
 
-## 🧠 Machine Learning & Data Pipeline
+## Machine Learning Pipeline
 
 ### 1. Training Dataset Generation & Physiology Correlations
 The training dataset is generated synthetically (5,600 samples) inside `model_trainer.py`. Unlike naive random generators, it simulates true physiological relationships:
@@ -116,7 +130,7 @@ Because standard ML classifiers cannot extrapolate out-of-distribution values, h
 
 ---
 
-## 🔒 Security Features
+## Security Features
 
 1. **Secure Token Storage**: Encrypts JWT tokens on mobile Keystore (Android) and Keychain (iOS) using `FlutterSecureStorage`.
 2. **Namespaced Data Caching**: Health data in `SharedPreferences` is keyspace-partitioned using the active profile ID prefix (`profile_{id}_`), preventing data leaks between profiles.
@@ -125,7 +139,7 @@ Because standard ML classifiers cannot extrapolate out-of-distribution values, h
 
 ---
 
-## 📡 Offline-First Architecture & Sync
+## Offline Architecture
 
 ```
 [Local Check-In Saved] ──> [Connectivity Failed?] ──> [Save to Namespaced Cache]
@@ -140,15 +154,15 @@ Because standard ML classifiers cannot extrapolate out-of-distribution values, h
 
 ---
 
-## 💬 Conversational AI Assistant
+## AI Assistant
 
 * **Context Construction**: The assistant builds user prompt context by serializing the latest wellness score, the **Highest Impact Opportunity**, and current vital sign values into the query context.
-* **Wording Alignment**: The assistant is constrained to explain sub-optimal metrics using the exact text formulated by the `InsightBuilder`, preventing halluncinations.
+* **Wording Alignment**: The assistant is constrained to explain sub-optimal metrics using the exact text formulated by the `InsightBuilder`, preventing hallucinations.
 * **Emergency Interception**: The assistant intercepts exercise or workout optimization queries if the user has an active `Critical` category, returning a safety warning.
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 
 ```
 vitalshield_ai/
@@ -187,7 +201,7 @@ vitalshield_ai/
 
 ---
 
-## 🚀 Setup & Installation
+## Installation
 
 ### 1. Backend Server Setup
 Ensure Python 3.10+ is installed:
@@ -223,7 +237,7 @@ flutter run
 
 ---
 
-## 🧪 Testing & Verification
+## Testing
 
 Run the test suites to verify functionality:
 * **Backend Pytest**:
@@ -238,7 +252,7 @@ Run the test suites to verify functionality:
 
 ---
 
-## 🔮 Future Scope
+## Future Scope
 
 1. **Wearable SDK Integration**: Direct integration with Apple HealthKit and Google Health Connect to pull vitals automatically instead of relying on manual check-ins.
 2. **Advanced Neural Networks**: Transitioning the Regressor engine from RandomForests to deep neural networks for multi-variate time-series forecasting.
