@@ -5,32 +5,40 @@ on: [push, pull_request]
 jobs:
   flutter:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: subosito/flutter-action@v2
         with:
-    channel: stable
+          channel: stable
+
       - name: Install dependencies
         run: flutter pub get
+
       - name: Analyze
         run: flutter analyze
+
       - name: Run tests
         run: flutter test --coverage
 
   backend:
     runs-on: ubuntu-latest
-    services: {}
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
+
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
           pip install pytest
+
       - name: Run backend tests
         working-directory: backend
         run: pytest -q
