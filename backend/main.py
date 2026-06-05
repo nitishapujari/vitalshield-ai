@@ -328,6 +328,24 @@ def update_profile(
     db.refresh(profile)
     return profile
 
+@app.delete("/profiles/{profile_id}")
+def delete_profile(
+    profile_id: str,
+    user_id: int = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    profile = db.query(models.Profile).filter(
+        models.Profile.id == profile_id,
+        models.Profile.user_id == user_id
+    ).first()
+    
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
+        
+    db.delete(profile)
+    db.commit()
+    return {"status": "success", "message": f"Profile {profile_id} deleted successfully."}
+
 # --- CHECK-INS ---
 @app.post("/checkins/create", response_model=schemas.CheckInResponse)
 def create_checkin(

@@ -47,6 +47,7 @@ flutter:
 
   assets:
     - assets/images/
+    - .env
     
 
   # Font infrastructure ready for Satoshi swap

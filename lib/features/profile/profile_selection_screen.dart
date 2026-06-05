@@ -10,6 +10,7 @@ import '../../core/utils/responsive.dart';
 import '../../models/user_model.dart';
 import '../../shared/widgets/app_button.dart';
 import '../../services/storage_service.dart';
+import '../../services/api_service.dart';
 import '../../shared/widgets/animated_gradient_bg.dart';
 import '../dashboard/presentation/providers/dashboard_provider.dart';
 import '../predictions/presentation/providers/predictions_provider.dart';
@@ -189,6 +190,16 @@ class _ProfileSelectionScreenState extends ConsumerState<ProfileSelectionScreen>
     );
 
     if (confirmed == true) {
+      try {
+        final apiService = ApiService();
+        final token = await apiService.getToken();
+        if (token != null && token.isNotEmpty) {
+          await apiService.delete('/profiles/${profile.id}');
+          debugPrint('Profile deleted from backend database.');
+        }
+      } catch (e) {
+        debugPrint('Failed to delete profile from backend: $e');
+      }
       await _storage.deleteProfile(profile.id!);
       await _loadProfiles();
       

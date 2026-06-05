@@ -11,7 +11,7 @@ import '../../../shared/widgets/app_button.dart';
 /// Step 4: Setup Complete — personalization animation + ready message.
 class SetupCompleteStep extends StatefulWidget {
   final UserModel userData;
-  final VoidCallback onComplete;
+  final Future<void> Function() onComplete;
 
   const SetupCompleteStep({
     super.key,
@@ -26,6 +26,7 @@ class SetupCompleteStep extends StatefulWidget {
 class _SetupCompleteStepState extends State<SetupCompleteStep>
     with SingleTickerProviderStateMixin {
   late AnimationController _shimmerController;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -124,7 +125,19 @@ class _SetupCompleteStepState extends State<SetupCompleteStep>
                 width: isDesktop ? 280 : double.infinity,
                 child: AppButton(
                   label: AppStrings.getStarted,
-                  onPressed: widget.onComplete,
+                  onPressed: _isSubmitting
+                      ? null
+                      : () async {
+                          setState(() => _isSubmitting = true);
+                          try {
+                            await widget.onComplete();
+                          } catch (e) {
+                            if (mounted) {
+                              setState(() => _isSubmitting = false);
+                            }
+                          }
+                        },
+                  isLoading: _isSubmitting,
                   icon: LucideIcons.arrow_right,
                 ),
               ).animate().fadeIn(delay: 900.ms, duration: 400.ms),
