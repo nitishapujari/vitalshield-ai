@@ -159,5 +159,20 @@ void main() {
       // Last selected should NOT be cleared
       expect(await storageService.getLastSelectedProfileId(), 'profile_ria');
     });
+
+    test('getProfileCreationDate parses creation date correctly from profile ID', () {
+      final now = DateTime.now();
+      final id = 'profile_${now.millisecondsSinceEpoch}';
+      
+      final date = storageService.getProfileCreationDate(id);
+      expect(date, isNotNull);
+      expect(date!.year, now.year);
+      expect(date.month, now.month);
+      expect(date.day, now.day);
+      expect(date.hour, 0);
+      expect(date.minute, 0);
+
+      expect(storageService.getProfileCreationDate('sarah_id'), isNull);
+    });
   });
 }

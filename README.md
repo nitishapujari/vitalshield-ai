@@ -46,6 +46,44 @@ Standard wellness monitoring applications face several critical technical challe
 * **Multi-Profile Management**: Supports profile switching with isolated database namespaces and local storage partitions for separate users.
 
 ---
+ ## Screenshots
+
+### Dashboard
+
+![Dashboard](assets/screenshots/dashboard.png)
+
+### Daily Check-In
+
+![Daily Check-In](assets/screenshots/daily_checkin.png)
+
+### Health Overview
+
+![Health Overview](assets/screenshots/health_overview.png)
+
+### Predictions
+
+![Predictions](assets/screenshots/predictions.png)
+
+### Wellness Assistant
+
+![Wellness Assistant](assets/screenshots/wellness_assistant.png)
+
+### Future Simulation
+
+![Future Simulation](assets/screenshots/future_simulation.png)
+
+### Analytics
+
+![Analytics](assets/screenshots/analytics.png)
+
+### Wellness Settings
+
+![Wellness Settings](assets/screenshots/wellness_settings.png)
+
+### Health Journey
+
+![Health Journey](assets/screenshots/health_journey.png)
+
 
 ## Architecture
 

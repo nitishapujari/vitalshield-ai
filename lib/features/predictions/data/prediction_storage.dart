@@ -75,7 +75,15 @@ class PredictionStorage {
     
     if (jsonString != null) {
       try {
-        return PredictionSnapshotModel.fromJson(jsonString);
+        final snapshot = PredictionSnapshotModel.fromJson(jsonString);
+        final profileId = await _storage.getCurrentProfileId();
+        if (profileId != null) {
+          final creationDate = _storage.getProfileCreationDate(profileId);
+          if (creationDate != null && snapshot.timestamp.isBefore(creationDate)) {
+            return null;
+          }
+        }
+        return snapshot;
       } catch (e) {
         // If parsing fails due to schema changes or corruption
         return null;
@@ -90,12 +98,18 @@ class PredictionStorage {
     final historyKey = await _getHistoryKey();
     final historyStrings = prefs.getStringList(historyKey) ?? [];
     
+    final profileId = await _storage.getCurrentProfileId();
+    final creationDate = profileId != null ? _storage.getProfileCreationDate(profileId) : null;
+
     final List<PredictionSnapshotModel> history = [];
     bool hasDuplicates = false;
     
     for (final str in historyStrings) {
       try {
         final snapshot = PredictionSnapshotModel.fromJson(str);
+        if (creationDate != null && snapshot.timestamp.isBefore(creationDate)) {
+          continue; // Filter out predictions before profile creation
+        }
         if (history.isNotEmpty) {
           final last = history.last;
           final isSameDay = last.timestamp.year == snapshot.timestamp.year &&

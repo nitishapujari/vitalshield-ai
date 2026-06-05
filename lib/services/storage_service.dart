@@ -214,10 +214,21 @@ class StorageService {
 
   /// Load current active profile's user data (backward compatibility)
   Future<UserModel?> loadUser() async {
-    final currentId = await getCurrentProfileId();
-    if (currentId == null) return null;
+    var currentId = await getCurrentProfileId();
+    final profiles = await getAllProfiles();
     
-    final profiles = await getAllProfilesRaw();
+    if (currentId == null) {
+      if (profiles.length == 1) {
+        currentId = profiles.first.id;
+        if (currentId != null) {
+          await setCurrentProfileId(currentId);
+          await setLastSelectedProfileId(currentId);
+        }
+      } else {
+        return null;
+      }
+    }
+    
     final index = profiles.indexWhere((p) => p.id == currentId);
     if (index != -1) {
       return profiles[index];
@@ -272,6 +283,20 @@ class StorageService {
   Future<void> setAuthenticated(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_authKey, value);
+  }
+
+  /// Returns the creation date of the profile based on its ID if it follows the
+  /// client-generated ID timestamp pattern. Returns null if it doesn't match or is invalid.
+  DateTime? getProfileCreationDate(String profileId) {
+    if (profileId.startsWith('profile_')) {
+      final msStr = profileId.replaceFirst('profile_', '');
+      final ms = int.tryParse(msStr);
+      if (ms != null) {
+        final creationTime = DateTime.fromMillisecondsSinceEpoch(ms);
+        return DateTime(creationTime.year, creationTime.month, creationTime.day);
+      }
+    }
+    return null;
   }
 
   /// Clear all stored data

@@ -161,39 +161,156 @@ class HealthOverviewScreen extends ConsumerWidget {
                           ),
                     ),
                     const SizedBox(height: AppSpacing.xl),
-                    Wrap(
-                      spacing: AppSpacing.lg,
-                      runSpacing: AppSpacing.lg,
-                      children: [
-                        _buildStatCard(
-                          context: context,
-                          icon: LucideIcons.heart,
-                          title: 'Latest Mood',
-                          value: moodValue,
-                          detail: moodDetail,
-                        ),
-                        _buildStatCard(
-                          context: context,
-                          icon: LucideIcons.moon,
-                          title: 'Sleep Quality',
-                          value: sleepValue,
-                          detail: sleepDetail,
-                        ),
-                        _buildStatCard(
-                          context: context,
-                          icon: LucideIcons.activity,
-                          title: 'Activity',
-                          value: activityValue,
-                          detail: activityDetail,
-                        ),
-                        _buildStatCard(
-                          context: context,
-                          icon: LucideIcons.shield,
-                          title: 'Risk Summary',
-                          value: riskValue,
-                          detail: riskDetail,
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final cardSpacing = AppSpacing.lg;
+                        if (constraints.maxWidth >= 960) {
+                          // 4 columns, equal height
+                          return IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: _buildStatCard(
+                                    context: context,
+                                    icon: LucideIcons.heart,
+                                    title: 'Latest Mood',
+                                    value: moodValue,
+                                    detail: moodDetail,
+                                  ),
+                                ),
+                                SizedBox(width: cardSpacing),
+                                Expanded(
+                                  child: _buildStatCard(
+                                    context: context,
+                                    icon: LucideIcons.moon,
+                                    title: 'Sleep Quality',
+                                    value: sleepValue,
+                                    detail: sleepDetail,
+                                  ),
+                                ),
+                                SizedBox(width: cardSpacing),
+                                Expanded(
+                                  child: _buildStatCard(
+                                    context: context,
+                                    icon: LucideIcons.activity,
+                                    title: 'Activity',
+                                    value: activityValue,
+                                    detail: activityDetail,
+                                  ),
+                                ),
+                                SizedBox(width: cardSpacing),
+                                Expanded(
+                                  child: _buildStatCard(
+                                    context: context,
+                                    icon: LucideIcons.shield,
+                                    title: 'Risk Summary',
+                                    value: riskValue,
+                                    detail: riskDetail,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else if (constraints.maxWidth >= 600) {
+                          // 2x2 grid, each row equal height
+                          return Column(
+                            children: [
+                              IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        context: context,
+                                        icon: LucideIcons.heart,
+                                        title: 'Latest Mood',
+                                        value: moodValue,
+                                        detail: moodDetail,
+                                      ),
+                                    ),
+                                    SizedBox(width: cardSpacing),
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        context: context,
+                                        icon: LucideIcons.moon,
+                                        title: 'Sleep Quality',
+                                        value: sleepValue,
+                                        detail: sleepDetail,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: cardSpacing),
+                              IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        context: context,
+                                        icon: LucideIcons.activity,
+                                        title: 'Activity',
+                                        value: activityValue,
+                                        detail: activityDetail,
+                                      ),
+                                    ),
+                                    SizedBox(width: cardSpacing),
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        context: context,
+                                        icon: LucideIcons.shield,
+                                        title: 'Risk Summary',
+                                        value: riskValue,
+                                        detail: riskDetail,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          // 1 column (mobile)
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildStatCard(
+                                context: context,
+                                icon: LucideIcons.heart,
+                                title: 'Latest Mood',
+                                value: moodValue,
+                                detail: moodDetail,
+                              ),
+                              SizedBox(height: cardSpacing),
+                              _buildStatCard(
+                                context: context,
+                                icon: LucideIcons.moon,
+                                title: 'Sleep Quality',
+                                value: sleepValue,
+                                detail: sleepDetail,
+                              ),
+                              SizedBox(height: cardSpacing),
+                              _buildStatCard(
+                                context: context,
+                                icon: LucideIcons.activity,
+                                title: 'Activity',
+                                value: activityValue,
+                                detail: activityDetail,
+                                  ),
+                              SizedBox(height: cardSpacing),
+                              _buildStatCard(
+                                context: context,
+                                icon: LucideIcons.shield,
+                                title: 'Risk Summary',
+                                value: riskValue,
+                                detail: riskDetail,
+                              ),
+                            ],
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(height: AppSpacing.xl),
                     AppCard(
@@ -238,49 +355,46 @@ class HealthOverviewScreen extends ConsumerWidget {
     required String value,
     required String detail,
   }) {
-    return SizedBox(
-      width: 280,
-      child: AppCard(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: AppColors.primary, size: 22),
+    return AppCard(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                    ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                detail,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                      height: 1.5,
-                    ),
-              ),
-            ],
-          ),
+              child: Icon(icon, color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              detail,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+            ),
+          ],
         ),
       ),
     );

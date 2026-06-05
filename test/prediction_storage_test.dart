@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vitalshield_ai/features/predictions/data/prediction_storage.dart';
 import 'package:vitalshield_ai/features/predictions/domain/models/prediction_model.dart';
+import 'package:vitalshield_ai/services/storage_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -154,6 +155,43 @@ void main() {
       // Verify that changes were persisted to storage
       final storedList = prefs.getStringList('prediction_snapshot_history') ?? [];
       expect(storedList.length, 1);
+    });
+
+    test('getPredictionHistory filters out predictions before profile creation date', () async {
+      final now = DateTime.now();
+      final profileCreationTime = now.subtract(const Duration(hours: 1)); // created 1 hour ago
+      final profileId = 'profile_${profileCreationTime.millisecondsSinceEpoch}';
+      
+      final storageService = StorageService();
+      await storageService.setCurrentProfileId(profileId);
+
+      final historyKey = '${profileId}_prediction_snapshot_history';
+
+      final oldPred = PredictionSnapshotModel(
+        id: 'pred_old',
+        timestamp: now.subtract(const Duration(days: 3)),
+        overallWellnessScore: 75,
+        categories: [],
+        primaryInsight: 'Old snapshot',
+      );
+
+      final newPred = PredictionSnapshotModel(
+        id: 'pred_new',
+        timestamp: now,
+        overallWellnessScore: 85,
+        categories: [],
+        primaryInsight: 'New snapshot',
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(historyKey, [
+        oldPred.toJson(),
+        newPred.toJson(),
+      ]);
+
+      final history = await storage.getPredictionHistory();
+      expect(history.length, 1);
+      expect(history.first.id, 'pred_new');
     });
   });
 }

@@ -23,7 +23,7 @@ class DashboardScreen extends ConsumerWidget {
     final state = ref.watch(dashboardProvider);
     final backendState = ref.watch(backendProvider);
     final isDesktop = Responsive.isDesktop(context);
-    final userName = state.user?.name ?? 'Nitisha';
+    final userName = state.user?.name ?? 'User';
 
     if (state.isLoading) {
       return const Scaffold(

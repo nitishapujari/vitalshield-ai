@@ -398,8 +398,12 @@ def get_checkin_history(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found or access denied.")
 
+    profile_created_date = profile.created_at.date()
+    start_of_created_day = datetime.datetime.combine(profile_created_date, datetime.time.min)
+
     checkins = db.query(models.CheckIn).filter(
-        models.CheckIn.profile_id == profile_id
+        models.CheckIn.profile_id == profile_id,
+        models.CheckIn.timestamp >= start_of_created_day
     ).order_by(models.CheckIn.timestamp.desc()).all()
     return checkins
 
@@ -611,8 +615,12 @@ def get_latest_prediction(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found or access denied.")
 
+    profile_created_date = profile.created_at.date()
+    start_of_created_day = datetime.datetime.combine(profile_created_date, datetime.time.min)
+
     latest_pred = db.query(models.Prediction).filter(
-        models.Prediction.profile_id == profile_id
+        models.Prediction.profile_id == profile_id,
+        models.Prediction.timestamp >= start_of_created_day
     ).order_by(models.Prediction.timestamp.desc()).first()
 
     if not latest_pred:
@@ -648,14 +656,19 @@ def get_analytics_report_endpoint(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found or access denied.")
 
+    profile_created_date = profile.created_at.date()
+    start_of_created_day = datetime.datetime.combine(profile_created_date, datetime.time.min)
+
     # Get check-ins
     checkins_db = db.query(models.CheckIn).filter(
-        models.CheckIn.profile_id == profile_id
+        models.CheckIn.profile_id == profile_id,
+        models.CheckIn.timestamp >= start_of_created_day
     ).order_by(models.CheckIn.timestamp.asc()).all()
 
     # Get predictions
     predictions_db = db.query(models.Prediction).filter(
-        models.Prediction.profile_id == profile_id
+        models.Prediction.profile_id == profile_id,
+        models.Prediction.timestamp >= start_of_created_day
     ).order_by(models.Prediction.timestamp.asc()).all()
 
     checkins = [
@@ -916,14 +929,19 @@ def get_assistant_message(
     is_senior = profile.age_category in ["Senior", "Senior Citizen"]
     is_female = profile.gender.lower() == "female"
 
+    profile_created_date = profile.created_at.date()
+    start_of_created_day = datetime.datetime.combine(profile_created_date, datetime.time.min)
+
     # Fetch latest checkin for dynamic context
     latest_checkin = db.query(models.CheckIn).filter(
-        models.CheckIn.profile_id == profile_id
+        models.CheckIn.profile_id == profile_id,
+        models.CheckIn.timestamp >= start_of_created_day
     ).order_by(models.CheckIn.timestamp.desc()).first()
 
     # Fetch latest prediction for dynamic context
     latest_pred = db.query(models.Prediction).filter(
-        models.Prediction.profile_id == profile_id
+        models.Prediction.profile_id == profile_id,
+        models.Prediction.timestamp >= start_of_created_day
     ).order_by(models.Prediction.timestamp.desc()).first()
 
     # Check for active Critical emergency
@@ -1136,8 +1154,11 @@ def get_assistant_message(
 
     elif is_comparison:
         # Load all check-ins chronologically
+        profile_created_date = profile.created_at.date()
+        start_of_created_day = datetime.datetime.combine(profile_created_date, datetime.time.min)
         checkins = db.query(models.CheckIn).filter(
-            models.CheckIn.profile_id == profile_id
+            models.CheckIn.profile_id == profile_id,
+            models.CheckIn.timestamp >= start_of_created_day
         ).order_by(models.CheckIn.timestamp.asc()).all()
         
         if len(checkins) < 2:

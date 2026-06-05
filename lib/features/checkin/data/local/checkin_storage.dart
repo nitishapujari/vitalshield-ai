@@ -80,12 +80,21 @@ class CheckinStorage {
 
     if (jsonList == null) return [];
     
+    final profileId = await _storage.getCurrentProfileId();
+    final creationDate = profileId != null ? _storage.getProfileCreationDate(profileId) : null;
+
     final List<DailyCheckinModel> checkins = [];
     for (final item in jsonList) {
       try {
         final decoded = jsonDecode(item);
         if (decoded is Map<String, dynamic>) {
-          checkins.add(DailyCheckinModel.fromJson(decoded));
+          final checkin = DailyCheckinModel.fromJson(decoded);
+          if (creationDate != null && checkin.timestamp != null) {
+            if (checkin.timestamp!.isBefore(creationDate)) {
+              continue; // Filter out data before profile creation
+            }
+          }
+          checkins.add(checkin);
         }
       } catch (_) {
         // Skip corrupted entry gracefully to preserve remaining history
