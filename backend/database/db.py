@@ -5,7 +5,9 @@ from sqlalchemy.orm import sessionmaker
 
 # Default to SQLite local database file in the backend directory
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'vitalshield.db')}")
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
+DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(DATA_DIR, 'vitalshield.db')}")
 
 # SQLite check_same_thread disable is required for async/multithreaded FastAPI requests
 connect_args = {}

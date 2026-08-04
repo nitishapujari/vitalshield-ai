@@ -26,6 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/health", status_code=status.HTTP_200_OK)
+def health_check():
+    return {"status": "ok"}
+
 # Password hashing configuration
 from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")

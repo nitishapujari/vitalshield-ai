@@ -5,7 +5,7 @@ import json
 from sqlalchemy.orm import Session
 
 # Import models from backend
-sys.path.append(r"c:\Users\Nitisha Pujari\Documents\programming\dev\projects\vitalshield_ai\backend")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from database.db import SessionLocal
 from database import models
 from services.predict_service import generate_wellness_prediction
