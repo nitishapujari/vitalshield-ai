@@ -72,7 +72,7 @@ def seed_demo_data():
         }
         pred_res = generate_wellness_prediction(
             metrics=metrics,
-            age_category=profile.age_category,
+            age_category="Adult", # age_category removed from Profile
             gender=profile.gender
         )
         
@@ -87,6 +87,7 @@ def seed_demo_data():
 
         prediction = models.Prediction(
             profile_id=profile_id,
+            checkin_id=checkin.id,
             timestamp=record_date,
             overall_score=snapshot.overallWellnessScore,
             primary_category=pred_res["primary_category"],
