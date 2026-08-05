@@ -30,15 +30,11 @@ app.add_middleware(
 def health_check():
     return {"status": "ok"}
 
-# Password hashing configuration
-from passlib.context import CryptContext
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+from core import security
+from routers import auth
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
+# Register auth router
+app.include_router(auth.router)
 
 def format_utc_timestamp(dt) -> str:
     if isinstance(dt, str):
@@ -79,7 +75,7 @@ try:
     if not google_user:
         google_user_email = db.query(models.User).filter(models.User.email == "google_user@vitalshield.ai").first()
         if not google_user_email:
-            hashed_pwd = get_password_hash("mockgooglepassword")
+            hashed_pwd = security.get_password_hash("mockgooglepassword")
             google_user = models.User(
                 id=1,
                 email="google_user@vitalshield.ai",
@@ -97,20 +93,6 @@ except Exception as e:
 finally:
     db.close()
 
-import hmac
-import hashlib
-import time
-
-SECRET_KEY = os.environ.get("SECRET_KEY", "vitalshield_secret_key_default_12345").encode('utf-8')
-
-# Lightweight token creation & validation
-def create_token(user_id: int) -> str:
-    # 30 days expiration
-    expiration = int(time.time()) + 30 * 24 * 60 * 60
-    payload = f"{user_id}.{expiration}"
-    signature = hmac.new(SECRET_KEY, payload.encode('utf-8'), hashlib.sha256).hexdigest()
-    return f"{payload}.{signature}"
-
 def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> int:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
@@ -123,39 +105,21 @@ def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> int:
     if token == "token_user_1_mockgoogle":
         return 1
         
-    parts = token.split(".")
-    if len(parts) != 3:
+    payload = security.decode_token(token)
+    if not payload or payload.get("type") != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token format."
+            detail="Invalid or expired access token."
         )
         
-    user_id_str, expiration_str, signature = parts
-    try:
-        user_id = int(user_id_str)
-        expiration = int(expiration_str)
-    except ValueError:
+    user_id_str = payload.get("sub")
+    if not user_id_str:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Malformed authentication token fields."
+            detail="Token payload invalid."
         )
         
-    if time.time() > expiration:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication token has expired."
-        )
-        
-    payload = f"{user_id}.{expiration}"
-    expected_signature = hmac.new(SECRET_KEY, payload.encode('utf-8'), hashlib.sha256).hexdigest()
-    
-    if not hmac.compare_digest(signature, expected_signature):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token signature."
-        )
-        
-    return user_id
+    return int(user_id_str)
 
 # --- HEALTH CHECK ---
 @app.get("/health")
@@ -174,90 +138,6 @@ def health_check(db: Session = Depends(get_db)):
         "ml_models_loaded": predict_service.score_model is not None and predict_service.cat_model is not None
     }
 
-# --- AUTHENTICATION ---
-@app.post("/auth/signup", response_model=schemas.AuthResponse)
-def signup(user_data: schemas.UserSignup, db: Session = Depends(get_db)):
-    # Validate password complexity
-    password = user_data.password
-    if len(password) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must be at least 8 characters long."
-        )
-    if not any(c.isupper() for c in password):
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain at least one uppercase letter."
-        )
-    if not any(c.islower() for c in password):
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain at least one lowercase letter."
-        )
-    if not any(c.isdigit() for c in password):
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain at least one number."
-        )
-
-    db_user = db.query(models.User).filter(models.User.email == user_data.email).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered.")
-    
-    hashed_pwd = get_password_hash(password)
-    new_user = models.User(
-        email=user_data.email,
-        password_hash=hashed_pwd,
-        name=user_data.name
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
-    token = create_token(new_user.id)
-    return schemas.AuthResponse(
-        token=token,
-        user_id=new_user.id,
-        email=new_user.email,
-        name=new_user.name
-    )
-
-@app.post("/auth/login", response_model=schemas.AuthResponse)
-def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == login_data.email).first()
-    if not user or not verify_password(login_data.password, user.password_hash):
-        raise HTTPException(status_code=400, detail="Incorrect email or password.")
-
-    token = create_token(user.id)
-    return schemas.AuthResponse(
-        token=token,
-        user_id=user.id,
-        email=user.email,
-        name=user.name
-    )
-
-@app.post("/auth/google_mock", response_model=schemas.AuthResponse)
-def google_mock(db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == 1).first()
-    if not user:
-        hashed_pwd = get_password_hash("mockgooglepassword")
-        user = models.User(
-            id=1,
-            email="google_user@vitalshield.ai",
-            password_hash=hashed_pwd,
-            name="Google User"
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    token = create_token(user.id)
-    return schemas.AuthResponse(
-        token=token,
-        user_id=user.id,
-        email=user.email,
-        name=user.name
-    )
 
 # --- PROFILES ---
 @app.post("/profiles/create", response_model=schemas.ProfileResponse)

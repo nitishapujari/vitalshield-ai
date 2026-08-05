@@ -9,4 +9,7 @@ services:
       - ./backend/data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
+      - JWT_SECRET_KEY=my_secure_test_key_123
     restart: unless-stopped
+
+
