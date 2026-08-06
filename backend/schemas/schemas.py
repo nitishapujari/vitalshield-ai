@@ -45,6 +45,14 @@ class ProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class UserGoalCreate(BaseModel):
+    goal_type: str
+    target_value: Optional[float] = None
+
+class UserGoalUpdate(BaseModel):
+    target_value: Optional[float] = None
+    status: Optional[str] = None
+
 class UserGoalResponse(BaseModel):
     id: int
     goal_type: str
@@ -53,6 +61,10 @@ class UserGoalResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class SettingsUpdate(BaseModel):
+    reminder_time: Optional[str] = None
+    push_notifications_enabled: Optional[bool] = None
 
 class SettingsResponse(BaseModel):
     id: int

@@ -71,3 +71,79 @@ def update_profile(
     db.commit()
     db.refresh(profile)
     return profile
+
+@router.post("/goals", response_model=schemas.UserGoalResponse)
+def create_goal(
+    goal_data: schemas.UserGoalCreate,
+    user_id: int = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="Profile must be created before adding goals.")
+        
+    new_goal = models.UserGoal(
+        profile_id=profile.id,
+        goal_type=goal_data.goal_type,
+        target_value=goal_data.target_value,
+        status="Active"
+    )
+    db.add(new_goal)
+    db.commit()
+    db.refresh(new_goal)
+    return new_goal
+
+@router.put("/goals/{goal_id}", response_model=schemas.UserGoalResponse)
+def update_goal(
+    goal_id: int,
+    goal_data: schemas.UserGoalUpdate,
+    user_id: int = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="Profile not found.")
+        
+    goal = db.query(models.UserGoal).filter(
+        models.UserGoal.id == goal_id,
+        models.UserGoal.profile_id == profile.id
+    ).first()
+    
+    if not goal or goal.status == "Deleted":
+        raise HTTPException(status_code=404, detail="Goal not found.")
+        
+    if goal_data.target_value is not None:
+        goal.target_value = goal_data.target_value
+    if goal_data.status is not None:
+        goal.status = goal_data.status
+        if goal_data.status == "Completed":
+            goal.completed_at = datetime.datetime.utcnow()
+            
+    db.commit()
+    db.refresh(goal)
+    return goal
+
+@router.put("/settings", response_model=schemas.SettingsResponse)
+def update_settings(
+    settings_data: schemas.SettingsUpdate,
+    user_id: int = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+    
+    if not settings:
+        settings = models.Settings(
+            user_id=user_id,
+            reminder_time=settings_data.reminder_time,
+            push_notifications_enabled=settings_data.push_notifications_enabled if settings_data.push_notifications_enabled is not None else False
+        )
+        db.add(settings)
+    else:
+        if settings_data.reminder_time is not None:
+            settings.reminder_time = settings_data.reminder_time
+        if settings_data.push_notifications_enabled is not None:
+            settings.push_notifications_enabled = settings_data.push_notifications_enabled
+            
+    db.commit()
+    db.refresh(settings)
+    return settings
