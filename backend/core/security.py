@@ -3,6 +3,8 @@ from datetime import datetime, timedelta
 import jwt
 from passlib.context import CryptContext
 import secrets
+from typing import Optional
+from fastapi import Header, HTTPException, status
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
@@ -42,3 +44,32 @@ def decode_token(token: str):
         return None
     except jwt.InvalidTokenError:
         return None
+
+def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> int:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
+            detail="Missing or invalid Authorization header. Form should be 'Bearer <token>'."
+        )
+    token = authorization.split(" ")[1]
+    
+    # Backwards compatibility fallback for development/offline mock
+    if token == "token_user_1_mockgoogle":
+        return 1
+        
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired access token."
+        )
+        
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token payload invalid."
+        )
+        
+    return int(user_id_str)
+

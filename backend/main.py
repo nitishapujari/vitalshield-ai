@@ -32,9 +32,11 @@ def health_check():
 
 from core import security
 from routers import auth
+from routers import user
 
-# Register auth router
+# Register routers
 app.include_router(auth.router)
+app.include_router(user.router)
 
 def format_utc_timestamp(dt) -> str:
     if isinstance(dt, str):
@@ -93,33 +95,7 @@ except Exception as e:
 finally:
     db.close()
 
-def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> int:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_412_PRECONDITION_FAILED,
-            detail="Missing or invalid Authorization header. Form should be 'Bearer <token>'."
-        )
-    token = authorization.split(" ")[1]
-    
-    # Backwards compatibility fallback for development/offline mock
-    if token == "token_user_1_mockgoogle":
-        return 1
-        
-    payload = security.decode_token(token)
-    if not payload or payload.get("type") != "access":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired access token."
-        )
-        
-    user_id_str = payload.get("sub")
-    if not user_id_str:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token payload invalid."
-        )
-        
-    return int(user_id_str)
+from core.security import get_user_id_from_token
 
 # --- HEALTH CHECK ---
 @app.get("/health")
@@ -138,97 +114,6 @@ def health_check(db: Session = Depends(get_db)):
         "ml_models_loaded": predict_service.score_model is not None and predict_service.cat_model is not None
     }
 
-
-# --- PROFILES ---
-@app.post("/profiles/create", response_model=schemas.ProfileResponse)
-def create_profile(
-    profile_data: schemas.ProfileCreate,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    # Verify user exists
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    # Check if profile already exists
-    existing_profile = db.query(models.Profile).filter(models.Profile.id == profile_data.id).first()
-    if existing_profile:
-        # If it already exists, update it instead
-        for key, val in profile_data.dict().items():
-            setattr(existing_profile, key, val)
-        existing_profile.user_id = user_id
-        db.commit()
-        db.refresh(existing_profile)
-        return existing_profile
-
-    # Create new profile
-    new_profile = models.Profile(
-        id=profile_data.id,
-        user_id=user_id,
-        name=profile_data.name,
-        dob=profile_data.dob,
-        gender=profile_data.gender,
-        height=profile_data.height,
-        weight=profile_data.weight,
-        bmi=profile_data.bmi,
-        activity_level=profile_data.activity_level,
-        height_unit=profile_data.height_unit,
-        wellness_tracking_enabled=profile_data.wellness_tracking_enabled,
-        age=profile_data.age,
-        age_category=profile_data.age_category
-    )
-    db.add(new_profile)
-    db.commit()
-    db.refresh(new_profile)
-    return new_profile
-
-@app.get("/profiles", response_model=List[schemas.ProfileResponse])
-def get_profiles(
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profiles = db.query(models.Profile).filter(models.Profile.user_id == user_id).all()
-    return profiles
-
-@app.put("/profiles/update", response_model=schemas.ProfileResponse)
-def update_profile(
-    profile_data: schemas.ProfileCreate,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_data.id,
-        models.Profile.user_id == user_id
-    ).first()
-    
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    for key, val in profile_data.dict().items():
-        setattr(profile, key, val)
-        
-    db.commit()
-    db.refresh(profile)
-    return profile
-
-@app.delete("/profiles/{profile_id}")
-def delete_profile(
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-        
-    db.delete(profile)
-    db.commit()
-    return {"status": "success", "message": f"Profile {profile_id} deleted successfully."}
 
 # --- CHECK-INS ---
 @app.post("/checkins/create", response_model=schemas.CheckInResponse)

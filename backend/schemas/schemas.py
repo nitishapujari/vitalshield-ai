@@ -25,18 +25,14 @@ class RefreshRequest(BaseModel):
 
 # --- PROFILE SCHEMAS ---
 class ProfileCreate(BaseModel):
-    id: str
     name: str
     dob: Optional[datetime] = None
     gender: str = ""
-    height: Optional[float] = None
-    weight: Optional[float] = None
-    bmi: Optional[float] = None
-    activity_level: Optional[str] = None
-    height_unit: str = "cm"
-    wellness_tracking_enabled: bool = False
-    age: Optional[int] = None
-    age_category: Optional[str] = None
+
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    dob: Optional[datetime] = None
+    gender: Optional[str] = None
 
 class ProfileResponse(BaseModel):
     id: str
@@ -44,17 +40,42 @@ class ProfileResponse(BaseModel):
     name: str
     dob: Optional[datetime] = None
     gender: str
-    height: Optional[float] = None
-    weight: Optional[float] = None
-    bmi: Optional[float] = None
-    activity_level: Optional[str] = None
-    height_unit: str
-    wellness_tracking_enabled: bool
-    age: Optional[int] = None
-    age_category: Optional[str] = None
-
+    created_at: datetime
+    
     class Config:
         from_attributes = True
+
+class UserGoalResponse(BaseModel):
+    id: int
+    goal_type: str
+    target_value: Optional[float] = None
+    status: str
+    
+    class Config:
+        from_attributes = True
+
+class SettingsResponse(BaseModel):
+    id: int
+    reminder_time: Optional[str] = None
+    push_notifications_enabled: bool
+    
+    class Config:
+        from_attributes = True
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    name: str
+    account_status: str
+    
+    class Config:
+        from_attributes = True
+
+class UserMeResponse(BaseModel):
+    user: UserResponse
+    profile: Optional[ProfileResponse] = None
+    active_goals: List[UserGoalResponse] = []
+    settings: Optional[SettingsResponse] = None
 
 # --- CHECK-IN SCHEMAS ---
 class CheckInCreate(BaseModel):
