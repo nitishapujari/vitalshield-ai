@@ -74,6 +74,20 @@ class SettingsResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class ConsentCreate(BaseModel):
+    policy_version: str
+    consent_granted: bool
+
+class ConsentResponse(BaseModel):
+    id: int
+    policy_version: str
+    consent_granted: bool
+    timestamp: datetime
+    ip_address: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 class UserResponse(BaseModel):
     id: int
     email: str

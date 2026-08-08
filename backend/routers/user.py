@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from typing import List
 from sqlalchemy.orm import Session
 import uuid
 import datetime
@@ -147,3 +148,35 @@ def update_settings(
     db.commit()
     db.refresh(settings)
     return settings
+
+@router.post("/consent", response_model=schemas.ConsentResponse)
+def record_consent(
+    consent_data: schemas.ConsentCreate,
+    request: Request,
+    user_id: int = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    ip_address = request.client.host if request.client else None
+    
+    consent_log = models.ConsentLog(
+        user_id=user_id,
+        policy_version=consent_data.policy_version,
+        consent_granted=consent_data.consent_granted,
+        ip_address=ip_address
+    )
+    
+    db.add(consent_log)
+    db.commit()
+    db.refresh(consent_log)
+    return consent_log
+
+@router.get("/consent", response_model=List[schemas.ConsentResponse])
+def get_consent_history(
+    user_id: int = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+):
+    consents = db.query(models.ConsentLog).filter(
+        models.ConsentLog.user_id == user_id
+    ).order_by(models.ConsentLog.timestamp.desc()).all()
+    
+    return consents
