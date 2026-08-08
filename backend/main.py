@@ -33,10 +33,13 @@ def health_check():
 from core import security
 from routers import auth
 from routers import user
+from routers import vitals
 
 # Register routers
 app.include_router(auth.router)
 app.include_router(user.router)
+app.include_router(vitals.router)
+app.include_router(vitals.dashboard_router)
 
 def format_utc_timestamp(dt) -> str:
     if isinstance(dt, str):
@@ -115,200 +118,7 @@ def health_check(db: Session = Depends(get_db)):
     }
 
 
-# --- CHECK-INS ---
-@app.post("/checkins/create", response_model=schemas.CheckInResponse)
-def create_checkin(
-    checkin: schemas.CheckInCreate,
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    # Verify profile belongs to user
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    timestamp = checkin.timestamp or datetime.datetime.utcnow()
-
-    # One check-in per calendar day: Check if a check-in already exists on this day.
-    start_of_day = datetime.datetime(timestamp.year, timestamp.month, timestamp.day, 0, 0, 0)
-    end_of_day = datetime.datetime(timestamp.year, timestamp.month, timestamp.day, 23, 59, 59, 999999)
-    
-    existing_checkin = db.query(models.CheckIn).filter(
-        models.CheckIn.profile_id == profile_id,
-        models.CheckIn.timestamp >= start_of_day,
-        models.CheckIn.timestamp <= end_of_day
-    ).first()
-
-    if existing_checkin:
-        # Overwrite/update existing check-in
-        existing_checkin.sleep_hours = checkin.sleep_hours
-        existing_checkin.steps = checkin.steps
-        existing_checkin.heart_rate = checkin.heart_rate
-        existing_checkin.systolic = checkin.systolic
-        existing_checkin.diastolic = checkin.diastolic
-        existing_checkin.glucose = checkin.glucose
-        existing_checkin.timestamp = timestamp
-        db.commit()
-        db.refresh(existing_checkin)
-        return existing_checkin
-
-    new_checkin = models.CheckIn(
-        profile_id=profile_id,
-        timestamp=timestamp,
-        sleep_hours=checkin.sleep_hours,
-        steps=checkin.steps,
-        heart_rate=checkin.heart_rate,
-        systolic=checkin.systolic,
-        diastolic=checkin.diastolic,
-        glucose=checkin.glucose
-    )
-    db.add(new_checkin)
-    db.commit()
-    db.refresh(new_checkin)
-    return new_checkin
-
-@app.get("/checkins/history", response_model=List[schemas.CheckInResponse])
-def get_checkin_history(
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    # Verify profile belongs to user
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    profile_created_date = profile.created_at.date()
-    start_of_created_day = datetime.datetime.combine(profile_created_date, datetime.time.min)
-
-    checkins = db.query(models.CheckIn).filter(
-        models.CheckIn.profile_id == profile_id,
-        models.CheckIn.timestamp >= start_of_created_day
-    ).order_by(models.CheckIn.timestamp.desc()).all()
-    return checkins
-
-# --- PREDICTIONS & ML PIPELINE ---
-@app.post("/predictions/generate", response_model=schemas.PredictionSnapshotResponse)
-def generate_prediction_endpoint(
-    input_data: schemas.PredictionGenerate,
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    # Verify profile belongs to user
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    metrics_dict = input_data.metrics.dict()
-    
-    # Run the ML Prediction Pipeline
-    pred_res = predict_service.generate_wellness_prediction(
-        metrics=metrics_dict,
-        age_category=input_data.age_category,
-        gender=input_data.gender,
-        cycle_phase=input_data.cycle_phase
-    )
-
-    # Save to Prediction Table with same-day deduplication
-    snapshot_id = str(int(datetime.datetime.utcnow().timestamp() * 1000))
-    timestamp = datetime.datetime.utcnow().replace(microsecond=0)
-    timestamp_str = format_utc_timestamp(timestamp)
-
-    # Calculate the prediction hash from raw health inputs
-    prediction_hash = generate_prediction_hash(
-        profile_id=profile_id,
-        timestamp=timestamp_str,
-        sleep=input_data.metrics.sleep_hours,
-        steps=input_data.metrics.steps,
-        heart_rate=input_data.metrics.heart_rate,
-        systolic=input_data.metrics.systolic,
-        diastolic=input_data.metrics.diastolic,
-        glucose=input_data.metrics.glucose,
-    )
-
-    # Build standard Response Object matching PredictionSnapshotModel schema
-    snapshot = schemas.PredictionSnapshotResponse(
-        id=snapshot_id,
-        timestamp=timestamp,
-        overallWellnessScore=pred_res["overallWellnessScore"],
-        categories=pred_res["categories"],
-        primaryInsight=pred_res["primaryInsight"],
-        is_ml_generated=pred_res["is_ml_generated"],
-        predictionHash=prediction_hash,
-        sleepHours=input_data.metrics.sleep_hours,
-        steps=input_data.metrics.steps,
-        heartRate=input_data.metrics.heart_rate,
-        systolic=input_data.metrics.systolic,
-        diastolic=input_data.metrics.diastolic,
-        glucose=input_data.metrics.glucose
-    )
-
-    existing_by_hash = db.query(models.Prediction).filter(
-        models.Prediction.profile_id == profile_id,
-        models.Prediction.prediction_hash == prediction_hash
-    ).first()
-
-    if existing_by_hash:
-        try:
-            data = json.loads(existing_by_hash.prediction_json)
-            # Ensure predictionHash and metrics are present in return object
-            data["predictionHash"] = prediction_hash
-            data["sleepHours"] = input_data.metrics.sleep_hours
-            data["steps"] = input_data.metrics.steps
-            data["heartRate"] = input_data.metrics.heart_rate
-            data["systolic"] = input_data.metrics.systolic
-            data["diastolic"] = input_data.metrics.diastolic
-            data["glucose"] = input_data.metrics.glucose
-            return schemas.PredictionSnapshotResponse(**data)
-        except Exception:
-            return snapshot
-
-    # Conflict check: Different hash, same day
-    pred_date = timestamp.date()
-    start_of_day = datetime.datetime.combine(pred_date, datetime.time.min)
-    end_of_day = datetime.datetime.combine(pred_date, datetime.time.max)
-    
-    same_day_pred = db.query(models.Prediction).filter(
-        models.Prediction.profile_id == profile_id,
-        models.Prediction.timestamp >= start_of_day,
-        models.Prediction.timestamp <= end_of_day
-    ).first()
-
-    if same_day_pred:
-        same_day_pred.overall_score = snapshot.overallWellnessScore
-        same_day_pred.primary_category = pred_res["primary_category"]
-        same_day_pred.insight = snapshot.primaryInsight
-        same_day_pred.prediction_json = json.dumps(snapshot.dict(), default=str)
-        same_day_pred.timestamp = timestamp
-        same_day_pred.prediction_hash = prediction_hash
-        db.commit()
-    else:
-        new_pred = models.Prediction(
-            profile_id=profile_id,
-            timestamp=timestamp,
-            overall_score=snapshot.overallWellnessScore,
-            primary_category=pred_res["primary_category"],
-            insight=snapshot.primaryInsight,
-            prediction_json=json.dumps(snapshot.dict(), default=str),
-            prediction_hash=prediction_hash
-        )
-        db.add(new_pred)
-        db.commit()
-
-    return snapshot
-
-
+# --- LEGACY PREDICTION SYNC (RETAINED) ---
 @app.post("/predictions/sync")
 def sync_predictions_endpoint(
     predictions: List[schemas.PredictionSyncItem],

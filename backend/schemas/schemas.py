@@ -103,45 +103,40 @@ class UserMeResponse(BaseModel):
     active_goals: List[UserGoalResponse] = []
     settings: Optional[SettingsResponse] = None
 
-# --- CHECK-IN SCHEMAS ---
-class CheckInCreate(BaseModel):
-    sleep_hours: float
-    steps: int
-    heart_rate: int
-    systolic: int
-    diastolic: int
-    glucose: float
+# --- VITALS SCHEMAS ---
+class VitalsCreate(BaseModel):
+    sleep_hours: Optional[float] = None
+    steps: Optional[int] = None
+    heart_rate: Optional[int] = None
+    systolic: Optional[int] = None
+    diastolic: Optional[int] = None
+    glucose: Optional[float] = None
+    client_timezone_offset: Optional[int] = 0
+    data_source: Optional[str] = "Manual"
+    extended_metrics: Optional[str] = None
     timestamp: Optional[datetime] = None
 
-class CheckInResponse(BaseModel):
+class VitalsResponse(BaseModel):
     id: int
     profile_id: str
     timestamp: datetime
-    sleep_hours: float
-    steps: int
-    heart_rate: int
-    systolic: int
-    diastolic: int
-    glucose: float
+    client_timezone_offset: Optional[int]
+    data_source: str
+    sleep_hours: Optional[float]
+    steps: Optional[int]
+    heart_rate: Optional[int]
+    systolic: Optional[int]
+    diastolic: Optional[int]
+    glucose: Optional[float]
+    extended_metrics: Optional[str]
 
     class Config:
         from_attributes = True
 
-# --- PREDICTION SCHEMAS ---
-class MetricsInput(BaseModel):
-    sleep_hours: float
-    steps: int
-    heart_rate: int
-    systolic: int
-    diastolic: int
-    glucose: float
-
-class PredictionGenerate(BaseModel):
-    metrics: MetricsInput
-    age: Optional[int] = None
-    age_category: Optional[str] = None
-    gender: Optional[str] = None
-    cycle_phase: Optional[str] = None
+class DashboardTodayResponse(BaseModel):
+    has_logged_vitals_today: bool
+    wellness_score: Optional[int] = None
+    primary_insight: Optional[str] = None
 
 class ContributingFactorSchema(BaseModel):
     label: str
@@ -190,6 +185,10 @@ class PredictionSnapshotResponse(BaseModel):
     highestImpactOpportunity: Optional[OpportunitySchema] = None
     secondaryOpportunity: Optional[OpportunitySchema] = None
     stableMetrics: List[str] = []
+
+class VitalsMergedResponse(BaseModel):
+    vitals: VitalsResponse
+    prediction: PredictionSnapshotResponse
 
 class PredictionSyncItem(BaseModel):
     id: str
