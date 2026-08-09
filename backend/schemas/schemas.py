@@ -231,12 +231,34 @@ class SimulationRunResponse(BaseModel):
     impact_description: str
 
 # --- ASSISTANT SCHEMAS ---
-class AssistantMessageRequest(BaseModel):
-    message: str
-    conversation_history: List[Dict[str, str]] = [] # list of {"role": "user"/"assistant", "content": "..."}
+class AssistantSessionResponse(BaseModel):
+    id: str
+    title: Optional[str] = None
+    status: str
+    created_at: datetime
 
-class AssistantResponse(BaseModel):
-    reply: str
+    class Config:
+        from_attributes = True
+
+class AssistantMessageResponse(BaseModel):
+    id: int
+    session_id: str
+    role: str
+    content: str
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+
+class ChatDetailResponse(BaseModel):
+    session: AssistantSessionResponse
+    messages: List[AssistantMessageResponse]
+
+class ChatCreateRequest(BaseModel):
+    title: Optional[str] = None
+
+class MessageCreateRequest(BaseModel):
+    message: str
 
 # --- PREFERENCE SCHEMAS ---
 class ReminderPreferenceSave(BaseModel):
