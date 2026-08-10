@@ -26,15 +26,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health", status_code=status.HTTP_200_OK)
-def health_check():
-    return {"status": "ok"}
-
 from core import security
-from routers import auth
-from routers import user
-from routers import vitals
-from routers import assistant
+from routers import auth, user, vitals, assistant, analytics
 
 # Register routers
 app.include_router(auth.router)
@@ -42,6 +35,7 @@ app.include_router(user.router)
 app.include_router(vitals.router)
 app.include_router(vitals.dashboard_router)
 app.include_router(assistant.router)
+app.include_router(analytics.router)
 
 def format_utc_timestamp(dt) -> str:
     if isinstance(dt, str):
@@ -240,203 +234,7 @@ def get_latest_prediction(
             is_ml_generated=True
         )
 
-# --- ANALYTICS ---
-@app.get("/analytics/report")
-def get_analytics_report_endpoint(
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    # Verify profile
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
 
-    profile_created_date = profile.created_at.date()
-    start_of_created_day = datetime.datetime.combine(profile_created_date, datetime.time.min)
-
-    # Get check-ins
-    checkins_db = db.query(models.CheckIn).filter(
-        models.CheckIn.profile_id == profile_id,
-        models.CheckIn.timestamp >= start_of_created_day
-    ).order_by(models.CheckIn.timestamp.asc()).all()
-
-    # Get predictions
-    predictions_db = db.query(models.Prediction).filter(
-        models.Prediction.profile_id == profile_id,
-        models.Prediction.timestamp >= start_of_created_day
-    ).order_by(models.Prediction.timestamp.asc()).all()
-
-    checkins = [
-        {
-            "timestamp": c.timestamp,
-            "sleep_hours": c.sleep_hours,
-            "steps": c.steps,
-            "heart_rate": c.heart_rate,
-            "systolic": c.systolic,
-            "diastolic": c.diastolic,
-            "glucose": c.glucose
-        }
-        for c in checkins_db
-    ]
-
-    predictions = [
-        {
-            "timestamp": p.timestamp,
-            "overall_score": p.overall_score,
-            "primary_category": p.primary_category
-        }
-        for p in predictions_db
-    ]
-
-    # Generate analytics report
-    report = analytics_service.generate_analytics_report(
-        checkins=checkins,
-        predictions=predictions,
-        age_category=profile.age_category,
-        gender=profile.gender
-    )
-
-    # Save to DB as history snapshot if successful
-    if report["hasEnoughData"]:
-        new_snap = models.AnalyticsSnapshot(
-            profile_id=profile_id,
-            timestamp=datetime.datetime.utcnow(),
-            analytics_json=json.dumps(report["report"])
-        )
-        db.add(new_snap)
-        db.commit()
-
-    return report
-
-# --- SIMULATION ---
-@app.post("/simulate", response_model=schemas.HabitSimulationResponse)
-def simulate_habits(req: schemas.HabitSimulationRequest):
-    is_senior = req.is_senior
-    sleep_hours = req.sleep_hours
-    steps = req.steps
-    consistency_level = req.consistency_level
-    routine_quality = req.routine_quality
-
-    # 1. Sleep score component (max 100)
-    sleep_score = 50.0
-    sleep_threshold = 6.5 if is_senior else 7.0
-    if sleep_hours >= sleep_threshold and sleep_hours <= 9.0:
-        sleep_score = 90.0 + (sleep_hours - sleep_threshold) * 5
-    elif sleep_hours > 9.0:
-        sleep_score = 85.0 - (sleep_hours - 9.0) * 10
-    else:
-        sleep_score = 40.0 + (sleep_hours / sleep_threshold) * 20
-    
-    sleep_score = max(0.0, min(100.0, sleep_score))
-
-    # 2. Activity/Steps component (max 100)
-    activity_score = 50.0
-    step_threshold = 4000 if is_senior else 5000
-    if steps >= step_threshold:
-        activity_score = 85.0 + ((steps - step_threshold) / (15000 - step_threshold) * 15)
-    else:
-        activity_score = 40.0 + (steps / step_threshold * 25)
-    
-    activity_score = max(0.0, min(100.0, activity_score))
-
-    # 3. Consistency and Routine components (direct inputs)
-    consistency_score = max(0.0, min(100.0, consistency_level))
-    routine_score = max(0.0, min(100.0, routine_quality))
-
-    # Calculate final projected score
-    base_score = (sleep_score * 0.3) + \
-                 (activity_score * 0.25) + \
-                 (consistency_score * 0.25) + \
-                 (routine_score * 0.20)
-                 
-    projected_score = int(round(base_score))
-    projected_score = max(0, min(100, projected_score))
-
-    return schemas.HabitSimulationResponse(projected_score=projected_score)
-
-@app.post("/simulation/run", response_model=schemas.SimulationRunResponse)
-
-def run_simulation_endpoint(
-    req: schemas.SimulationRunRequest,
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    # 1. Base checkin metrics
-    baseline_metrics = {
-        "sleep_hours": req.sleep_hours,
-        "steps": req.steps,
-        "heart_rate": req.heart_rate,
-        "systolic": req.systolic,
-        "diastolic": req.diastolic,
-        "glucose": req.glucose
-    }
-    
-    # 2. Get baseline prediction
-    baseline_pred = predict_service.generate_wellness_prediction(
-        metrics=baseline_metrics,
-        age_category=profile.age_category,
-        gender=profile.gender
-    )
-
-    # 3. Apply target modification
-    simulated_metrics = baseline_metrics.copy()
-    if req.target_metric in simulated_metrics:
-        simulated_metrics[req.target_metric] = req.target_value
-    else:
-        raise HTTPException(status_code=400, detail=f"Invalid target metric: {req.target_metric}")
-
-    # 4. Get simulated prediction
-    simulated_pred = predict_service.generate_wellness_prediction(
-        metrics=simulated_metrics,
-        age_category=profile.age_category,
-        gender=profile.gender
-    )
-
-    orig_score = baseline_pred["overallWellnessScore"]
-    sim_score = simulated_pred["overallWellnessScore"]
-    diff = sim_score - orig_score
-
-    # Construct descriptive helper text
-    metric_label = predict_service.FEATURE_LABELS.get(req.target_metric, req.target_metric)
-    if diff > 0:
-        desc = f"Mindful adjustment of {metric_label} to {req.target_value} shows a positive wellness score improvement of +{diff} points."
-    elif diff < 0:
-        desc = f"Simulating {metric_label} at {req.target_value} results in a score reduction of {diff} points. Maintaining closer targets is recommended."
-    else:
-        desc = f"Simulating {metric_label} at {req.target_value} maintains your baseline wellness balance."
-
-    response = schemas.SimulationRunResponse(
-        original_score=orig_score,
-        simulated_score=sim_score,
-        score_difference=diff,
-        primary_category_original=baseline_pred["primary_category"],
-        primary_category_simulated=simulated_pred["primary_category"],
-        impact_description=desc
-    )
-
-    # Save to Simulation history
-    new_sim = models.Simulation(
-        profile_id=profile_id,
-        timestamp=datetime.datetime.utcnow(),
-        input_json=json.dumps(req.dict()),
-        output_json=json.dumps(response.dict())
-    )
-    db.add(new_sim)
-    db.commit()
-
-    return response
 
 
 # --- PREFERENCES PERSISTENCE ---

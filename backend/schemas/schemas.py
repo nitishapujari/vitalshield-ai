@@ -209,20 +209,11 @@ class PredictionSyncItem(BaseModel):
     stableMetrics: List[str] = []
 
 # --- SIMULATION SCHEMAS ---
-class SimulationRunRequest(BaseModel):
-    # Base baseline checkin
-    sleep_hours: float
-    steps: int
-    heart_rate: int
-    systolic: int
-    diastolic: int
-    glucose: float
-    
-    # What to modify
+class SimulationRequest(BaseModel):
     target_metric: str # e.g. 'sleep_hours', 'steps'
     target_value: float
 
-class SimulationRunResponse(BaseModel):
+class SimulationResponse(BaseModel):
     original_score: int
     simulated_score: int
     score_difference: int
@@ -268,13 +259,3 @@ class CycleCarePreferenceSave(BaseModel):
     settings_json: str
 
 # --- HABIT SIMULATION SCHEMAS ---
-class HabitSimulationRequest(BaseModel):
-    sleep_hours: float
-    steps: int
-    consistency_level: float
-    routine_quality: float
-    is_senior: bool
-
-class HabitSimulationResponse(BaseModel):
-    projected_score: int
-
