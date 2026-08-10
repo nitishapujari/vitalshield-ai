@@ -60,6 +60,8 @@ def login(login_data: schemas.UserLogin, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == login_data.email).first()
     if not user or not security.verify_password(login_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    if user.account_status == "deleted":
+        raise HTTPException(status_code=401, detail="Account has been deleted")
         
     # Generate tokens
     access_token = security.create_access_token({"sub": str(user.id)})
@@ -116,6 +118,8 @@ def refresh(request: schemas.RefreshRequest, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if user.account_status == "deleted":
+        raise HTTPException(status_code=401, detail="Account has been deleted")
         
     # Revoke old refresh token (Token Rotation)
     rt_model.revoked_at = datetime.utcnow()

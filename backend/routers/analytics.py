@@ -7,7 +7,7 @@ import datetime
 from database import models
 from database.db import get_db
 from schemas import schemas
-from core.security import get_user_id_from_token
+from core.security import get_active_user_id
 from services import predict_service
 
 router = APIRouter(prefix="/me", tags=["Analytics & Forecasting"])
@@ -22,7 +22,7 @@ def get_profile(db: Session, user_id: int):
 def get_prediction_history(
     skip: int = Query(0, ge=0, description="Pagination skip"),
     limit: int = Query(100, ge=1, le=1000, description="Pagination limit"),
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_profile(db, user_id)
@@ -74,7 +74,7 @@ def get_prediction_history(
 @router.post("/simulations", response_model=schemas.SimulationResponse)
 def run_simulation(
     req: schemas.SimulationRequest,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_profile(db, user_id)

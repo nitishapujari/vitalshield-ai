@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 from database.db import get_db
 from database import models
 from schemas import schemas
-from core.security import get_user_id_from_token
+from core.security import get_active_user_id
 from services import predict_service
 
 router = APIRouter(prefix="/vitals", tags=["Vitals"])
@@ -89,7 +89,7 @@ def format_utc_timestamp(dt) -> str:
 @router.post("", response_model=schemas.VitalsMergedResponse)
 def log_vitals(
     vitals: schemas.VitalsCreate,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_profile(db, user_id)
@@ -255,7 +255,7 @@ def log_vitals(
 
 @router.get("/history", response_model=List[schemas.VitalsResponse])
 def get_vitals_history(
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_profile(db, user_id)
@@ -269,7 +269,7 @@ def get_vitals_history(
 @dashboard_router.get("/today", response_model=schemas.DashboardTodayResponse)
 def get_dashboard_today(
     timezone_offset: int = Query(0, description="Client timezone offset from UTC in minutes"),
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_profile(db, user_id)

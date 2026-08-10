@@ -9,7 +9,7 @@ import json
 from database.db import get_db
 from database import models
 from schemas import schemas
-from core.security import get_user_id_from_token
+from core.security import get_active_user_id
 from services.assistant_service import is_emergency_query, get_regional_crisis_response, generate_assistant_response
 
 router = APIRouter(prefix="/me/assistant/chats", tags=["Assistant"])
@@ -31,7 +31,7 @@ def get_session_or_404(session_id: str, profile_id: str, db: Session) -> models.
 
 @router.get("", response_model=List[schemas.AssistantSessionResponse])
 def get_chats(
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_current_profile(user_id, db)
@@ -43,7 +43,7 @@ def get_chats(
 @router.post("", response_model=schemas.AssistantSessionResponse)
 def create_chat(
     req: schemas.ChatCreateRequest,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_current_profile(user_id, db)
@@ -65,7 +65,7 @@ def create_chat(
 @router.get("/{session_id}", response_model=schemas.ChatDetailResponse)
 def get_chat_details(
     session_id: str,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_current_profile(user_id, db)
@@ -84,7 +84,7 @@ def get_chat_details(
 def create_message(
     session_id: str,
     req: schemas.MessageCreateRequest,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = get_current_profile(user_id, db)

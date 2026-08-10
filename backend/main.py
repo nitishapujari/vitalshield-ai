@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 from core import security
-from routers import auth, user, vitals, assistant, analytics
+from routers import auth, user, vitals, assistant, analytics, settings, privacy
 
 # Register routers
 app.include_router(auth.router)
@@ -36,6 +36,8 @@ app.include_router(vitals.router)
 app.include_router(vitals.dashboard_router)
 app.include_router(assistant.router)
 app.include_router(analytics.router)
+app.include_router(settings.router)
+app.include_router(privacy.router)
 
 def format_utc_timestamp(dt) -> str:
     if isinstance(dt, str):
@@ -233,109 +235,3 @@ def get_latest_prediction(
             primaryInsight=latest_pred.insight,
             is_ml_generated=True
         )
-
-
-
-
-# --- PREFERENCES PERSISTENCE ---
-@app.post("/preferences/reminders")
-def save_reminder_preferences(
-    pref: schemas.ReminderPreferenceSave,
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    db_pref = db.query(models.ReminderPreference).filter(
-        models.ReminderPreference.profile_id == profile_id
-    ).first()
-
-    if db_pref:
-        db_pref.settings_json = pref.settings_json
-    else:
-        db_pref = models.ReminderPreference(
-            profile_id=profile_id,
-            settings_json=pref.settings_json
-        )
-        db.add(db_pref)
-        
-    db.commit()
-    return {"status": "success"}
-
-@app.get("/preferences/reminders")
-def get_reminder_preferences(
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    db_pref = db.query(models.ReminderPreference).filter(
-        models.ReminderPreference.profile_id == profile_id
-    ).first()
-
-    if not db_pref:
-        return {"settings_json": "{}"}
-    return {"settings_json": db_pref.settings_json}
-
-@app.post("/preferences/cycle")
-def save_cycle_preferences(
-    pref: schemas.CycleCarePreferenceSave,
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    db_pref = db.query(models.CycleCarePreference).filter(
-        models.CycleCarePreference.profile_id == profile_id
-    ).first()
-
-    if db_pref:
-        db_pref.settings_json = pref.settings_json
-    else:
-        db_pref = models.CycleCarePreference(
-            profile_id=profile_id,
-            settings_json=pref.settings_json
-        )
-        db.add(db_pref)
-        
-    db.commit()
-    return {"status": "success"}
-
-@app.get("/preferences/cycle")
-def get_cycle_preferences(
-    profile_id: str,
-    user_id: int = Depends(get_user_id_from_token),
-    db: Session = Depends(get_db)
-):
-    profile = db.query(models.Profile).filter(
-        models.Profile.id == profile_id,
-        models.Profile.user_id == user_id
-    ).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found or access denied.")
-
-    db_pref = db.query(models.CycleCarePreference).filter(
-        models.CycleCarePreference.profile_id == profile_id
-    ).first()
-
-    if not db_pref:
-        return {"settings_json": "{}"}
-    return {"settings_json": db_pref.settings_json}

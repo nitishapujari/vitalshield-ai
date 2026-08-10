@@ -4,7 +4,10 @@ import jwt
 from passlib.context import CryptContext
 import secrets
 from typing import Optional
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, status, Depends
+from sqlalchemy.orm import Session
+from database.db import get_db
+from database import models
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
@@ -73,3 +76,14 @@ def get_user_id_from_token(authorization: Optional[str] = Header(None)) -> int:
         
     return int(user_id_str)
 
+def get_active_user_id(
+    user_id: int = Depends(get_user_id_from_token),
+    db: Session = Depends(get_db)
+) -> int:
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user or user.account_status == "deleted":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account not found or has been deleted."
+        )
+    return user_id

@@ -7,7 +7,7 @@ import datetime
 from database.db import get_db
 from database import models
 from schemas import schemas
-from core.security import get_user_id_from_token
+from core.security import get_active_user_id
 
 router = APIRouter(
     prefix="/me",
@@ -15,7 +15,7 @@ router = APIRouter(
 )
 
 @router.get("", response_model=schemas.UserMeResponse)
-def get_me(user_id: int = Depends(get_user_id_from_token), db: Session = Depends(get_db)):
+def get_me(user_id: int = Depends(get_active_user_id), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -41,7 +41,7 @@ def get_me(user_id: int = Depends(get_user_id_from_token), db: Session = Depends
 @router.put("/profile", response_model=schemas.ProfileResponse)
 def update_profile(
     profile_data: schemas.ProfileUpdateRequest,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -76,7 +76,7 @@ def update_profile(
 @router.post("/goals", response_model=schemas.UserGoalResponse)
 def create_goal(
     goal_data: schemas.UserGoalCreate,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
@@ -98,7 +98,7 @@ def create_goal(
 def update_goal(
     goal_id: int,
     goal_data: schemas.UserGoalUpdate,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     profile = db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
@@ -127,7 +127,7 @@ def update_goal(
 @router.put("/settings", response_model=schemas.SettingsResponse)
 def update_settings(
     settings_data: schemas.SettingsUpdate,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
@@ -153,7 +153,7 @@ def update_settings(
 def record_consent(
     consent_data: schemas.ConsentCreate,
     request: Request,
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     ip_address = request.client.host if request.client else None
@@ -172,7 +172,7 @@ def record_consent(
 
 @router.get("/consent", response_model=List[schemas.ConsentResponse])
 def get_consent_history(
-    user_id: int = Depends(get_user_id_from_token),
+    user_id: int = Depends(get_active_user_id),
     db: Session = Depends(get_db)
 ):
     consents = db.query(models.ConsentLog).filter(
