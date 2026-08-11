@@ -157,3 +157,53 @@ def logout(request: schemas.RefreshRequest, db: Session = Depends(get_db)):
         db.commit()
         
     return {"message": "Successfully logged out"}
+
+@router.post("/password/reset")
+def request_password_reset(request: schemas.PasswordResetRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+
+    # Do not reveal whether account exists
+    success_msg = {"status": "If the email is registered and active, a reset link will be sent."}
+
+    if user and user.account_status != "deleted":
+        token = security.create_password_reset_token(user.id, user.password_hash)
+        # Mock sending email
+        print(f"\n--- MOCK EMAIL ---")
+        print(f"To: {user.email}")
+        print(f"Subject: Password Reset Request")
+        print(f"Token: {token}")
+        print(f"------------------\n")
+
+    return success_msg
+
+@router.post("/password/confirm")
+def confirm_password_reset(request: schemas.PasswordResetConfirm, db: Session = Depends(get_db)):
+    payload = security.verify_password_reset_token(request.token)
+    if not payload:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user_id_str = payload.get("sub")
+    token_pwd_hash = payload.get("pwd_hash")
+
+    if not user_id_str or not token_pwd_hash:
+        raise HTTPException(status_code=400, detail="Invalid token payload")
+
+    user_id = int(user_id_str)
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if user.account_status == "deleted":
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Check if the token's password hash matches the user's current password hash
+    if user.password_hash != token_pwd_hash:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Valid token, update password
+    user.password_hash = security.get_password_hash(request.new_password)
+    user.updated_at = datetime.utcnow()
+    db.commit()
+
+    return {"status": "Password successfully reset"}

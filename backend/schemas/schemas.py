@@ -23,6 +23,13 @@ class AuthResponse(BaseModel):
 class RefreshRequest(BaseModel):
     refresh_token: str
 
+class PasswordResetRequest(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
 # --- PROFILE SCHEMAS ---
 class ProfileCreate(BaseModel):
     name: str

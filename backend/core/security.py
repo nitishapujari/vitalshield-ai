@@ -87,3 +87,24 @@ def get_active_user_id(
             detail="Account not found or has been deleted."
         )
     return user_id
+
+def create_password_reset_token(user_id: int, current_password_hash: str) -> str:
+    to_encode = {
+        "sub": str(user_id),
+        "pwd_hash": current_password_hash
+    }
+    expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire, "type": "reset"})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def verify_password_reset_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "reset":
+            return None
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
