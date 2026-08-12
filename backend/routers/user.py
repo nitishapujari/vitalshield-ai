@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from typing import List
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import uuid
 import datetime
@@ -123,60 +122,3 @@ def update_goal(
     db.commit()
     db.refresh(goal)
     return goal
-
-@router.put("/settings", response_model=schemas.SettingsResponse)
-def update_settings(
-    settings_data: schemas.SettingsUpdate,
-    user_id: int = Depends(get_active_user_id),
-    db: Session = Depends(get_db)
-):
-    settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
-    
-    if not settings:
-        settings = models.Settings(
-            user_id=user_id,
-            reminder_time=settings_data.reminder_time,
-            push_notifications_enabled=settings_data.push_notifications_enabled if settings_data.push_notifications_enabled is not None else False
-        )
-        db.add(settings)
-    else:
-        if settings_data.reminder_time is not None:
-            settings.reminder_time = settings_data.reminder_time
-        if settings_data.push_notifications_enabled is not None:
-            settings.push_notifications_enabled = settings_data.push_notifications_enabled
-            
-    db.commit()
-    db.refresh(settings)
-    return settings
-
-@router.post("/consent", response_model=schemas.ConsentResponse)
-def record_consent(
-    consent_data: schemas.ConsentCreate,
-    request: Request,
-    user_id: int = Depends(get_active_user_id),
-    db: Session = Depends(get_db)
-):
-    ip_address = request.client.host if request.client else None
-    
-    consent_log = models.ConsentLog(
-        user_id=user_id,
-        policy_version=consent_data.policy_version,
-        consent_granted=consent_data.consent_granted,
-        ip_address=ip_address
-    )
-    
-    db.add(consent_log)
-    db.commit()
-    db.refresh(consent_log)
-    return consent_log
-
-@router.get("/consent", response_model=List[schemas.ConsentResponse])
-def get_consent_history(
-    user_id: int = Depends(get_active_user_id),
-    db: Session = Depends(get_db)
-):
-    consents = db.query(models.ConsentLog).filter(
-        models.ConsentLog.user_id == user_id
-    ).order_by(models.ConsentLog.timestamp.desc()).all()
-    
-    return consents
