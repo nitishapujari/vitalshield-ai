@@ -22,8 +22,8 @@ class AuthService {
         'password': password,
       });
 
-      if (response != null && response['token'] != null) {
-        final token = response['token'] as String;
+      if (response != null && response['access_token'] != null) {
+        final token = response['access_token'] as String;
         await _apiService.setToken(token);
         await _storageService.setAuthenticated(true);
         await _storageService.setLoggedInEmail(email);
