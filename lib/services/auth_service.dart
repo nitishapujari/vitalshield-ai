@@ -31,8 +31,8 @@ class AuthService {
 
         // Fetch profiles for this user from backend and sync them locally
         try {
-          final List<dynamic>? backendProfiles = await _apiService.get('/profiles');
-          if (backendProfiles != null && backendProfiles.isNotEmpty) {
+          final dynamic backendMe = await _apiService.get('/me');
+          if (backendMe != null && backendMe['profile'] != null) {
             // Load and clear existing profiles to replace with synced ones
             final currentProfiles = await _storageService.getAllProfiles();
             for (final p in currentProfiles) {
@@ -43,32 +43,28 @@ class AuthService {
 
             // Add back backend profiles
             // We need to parse each profile from JSON and add it
-            for (final bp in backendProfiles) {
-              // Map backend ProfileResponse fields back to UserModel
-              // Backend Profile response uses user_id, dob, height, weight, activity_level, height_unit, age_category, wellness_tracking_enabled
-              final map = bp as Map<String, dynamic>;
-              
-              // We reconstruct the user profile JSON structure for UserModel.fromJson
-              final profileJson = {
-                'id': map['id'],
-                'name': map['name'],
-                'email': email,
-                'dob': map['dob'],
-                'gender': map['gender'],
-                'height': map['height'],
-                'weight': map['weight'],
-                'bmi': map['bmi'],
-                'activity_level': map['activity_level'],
-                'wellness_tracking_enabled': map['wellness_tracking_enabled'],
-                'age': map['age'],
-                'age_category': map['age_category'],
-                'height_unit': map['height_unit'] ?? 'cm',
-              };
-              
-              // Add to local StorageService
-              final userModel = UserModel.fromJson(profileJson);
-              await _storageService.addProfile(userModel);
-            }
+            final map = backendMe['profile'] as Map<String, dynamic>;
+
+            // We reconstruct the user profile JSON structure for UserModel.fromJson
+            final profileJson = {
+              'id': map['id'],
+              'name': map['name'],
+              'email': email,
+              'dob': map['dob'],
+              'gender': map['gender'],
+              'height': map['height'],
+              'weight': map['weight'],
+              'bmi': map['bmi'],
+              'activity_level': map['activity_level'],
+              'wellness_tracking_enabled': map['wellness_tracking_enabled'],
+              'age': map['age'],
+              'age_category': map['age_category'],
+              'height_unit': map['height_unit'] ?? 'cm',
+            };
+
+            // Add to local StorageService
+            final userModel = UserModel.fromJson(profileJson);
+            await _storageService.addProfile(userModel);
           }
         } catch (e) {
           debugPrint('Error syncing profiles during login: $e');

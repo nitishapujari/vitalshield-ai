@@ -232,7 +232,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     // Sync to backend database
     try {
       final apiService = ApiService();
-      await apiService.put('/profiles/update', updatedUser.toJson());
+      await apiService.put('/me/profile', {
+        'name': updatedUser.name,
+        if (updatedUser.dob != null) 'dob': updatedUser.dob!.toIso8601String(),
+        'gender': updatedUser.gender,
+      });
       debugPrint('Successfully synchronized profile update to backend.');
     } catch (e) {
       debugPrint('Failed to synchronize profile update to backend: $e');

@@ -126,13 +126,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               // Pre-flight check: only call backend if we have a valid auth token
               final token = await apiService.getToken();
               if (token != null && token.isNotEmpty) {
-                await apiService.post('/profiles/create', loadedUser.toJson());
+                await apiService.put('/me/profile', {
+                  'name': loadedUser.name,
+                  if (loadedUser.dob != null) 'dob': loadedUser.dob!.toIso8601String(),
+                  'gender': loadedUser.gender,
+                });
                 debugPrint('Profile synced to backend successfully.');
               } else {
                 debugPrint('Skipping backend profile sync: no auth token available.');
               }
             } catch (e) {
               debugPrint('Failed to sync profile to backend: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to save profile: $e'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+              return; // Stop onboarding flow on failure
             }
           }
 
